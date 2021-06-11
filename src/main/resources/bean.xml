@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xmlns:context="http://www.springframework.org/schema/context"
+		xmlns:mvc="http://www.springframework.org/schema/mvc"
+		xmlns:tx="http://www.springframework.org/schema/tx"
+		xmlns:aop="http://www.springframework.org/schema/aop"
+		xsi:schemaLocation="http://www.springframework.org/schema/beans
+			http://www.springframework.org/schema/beans/spring-beans.xsd
+			http://www.springframework.org/schema/context
+			http://www.springframework.org/schema/context/spring-context.xsd
+			http://www.springframework.org/schema/tx
+			http://www.springframework.org/schema/tx/spring-tx.xsd
+			http://www.springframework.org/schema/mvc
+			http://www.springframework.org/schema/mvc/spring-mvc.xsd
+			http://www.springframework.org/schema/aop
+			http://www.springframework.org/schema/aop/spring-aop.xsd">
+	
+	<context:property-placeholder location="classpath:config.properties" />
+	
+
+	<!-- 配置需要扫描的jar包 ,扫描注解加载到spring容器,注意：use-default-filters="true"-->
+	<context:component-scan base-package="com.qiang" use-default-filters="true">
+		<context:exclude-filter type="annotation" expression="org.springframework.stereotype.Controller"/>
+	</context:component-scan>
+	
+	<!-- 配置数据源 -->
+	<bean id="dataSource" class="com.mchange.v2.c3p0.ComboPooledDataSource">
+		<property name="driverClass" value="${jdbc.driverClass}"/>
+		<property name="jdbcUrl" value="${jdbc.url}"/>
+		<property name="user" value="${jdbc.username}"/>
+		<property name="password" value="${jdbc.password}"/>
+		<!-- 指定连接池中保留的最大连接数. Default:15-->  
+       	<property name="maxPoolSize" value="${c3p0.maxPoolSize}"/>
+        <!-- 指定连接池中保留的最小连接数-->  
+       	<property name="minPoolSize" value="${c3p0.minPoolSize}"/>
+        <!-- 指定连接池的初始化连接数  取值应在minPoolSize 与 maxPoolSize 之间.Default:3-->  
+      	<property name="initialPoolSize" value="3"/>
+        <!-- 最大空闲时间,60秒内未使用则连接被丢弃。若为0则永不丢弃。 Default:0-->  
+        <property name="maxIdleTime" value="${c3p0.maxIdleTime}"/>
+        <!-- 当连接池中的连接耗尽的时候c3p0一次同时获取的连接数. Default:3-->  
+        <property name="acquireIncrement" value="3"/>
+        <!-- JDBC的标准,用以控制数据源内加载的PreparedStatements数量。但由于预缓存的statements属于单个connection而不是整个连接池所以设置这个参数需要考虑到多方面的因数.如果maxStatements与maxStatementsPerConnection均为0,则缓存被关闭。Default:0-->  
+        <property name="maxStatements" value="${c3p0.maxStatements}"/>  
+        <!-- 每60秒检查所有连接池中的空闲连接.Default:0 -->
+        <property name="idleConnectionTestPeriod" value="${c3p0.idleConnectionTestPeriod}"/>
+        <!-- 定义在从数据库获取新连接失败后重复尝试的次数。 Default:30 -->  
+        <property name="acquireRetryAttempts" value="${c3p0.acquireRetryAttempts}"/>
+        <!-- 获取连接失败将会引起所有等待连接池来获取连接的线程抛出异常。但是数据源仍有效保留,并在下次调用getConnection()的时候继续尝试获取连接。如果设为true,那么在尝试获取连接失败后该数据源将申明已断开并永久关闭。Default:false -->  
+       	<property name="breakAfterAcquireFailure" value="${c3p0.breakAfterAcquireFailure}"/>
+        <!-- 因性能消耗大请只在需要的时候是哟个它。如果设为true,那么在每个connection提交的时候都将校验其有效性。建议使用idleConnectionTestPeriod或automaticTestTable等提升连接测试的性能。 Default:false-->  
+        <property name="testConnectionOnCheckout" value="${c3p0.testConnectionOnCheckout}"/>
+	</bean>
+	
+	<!-- mybatis和spring整合 -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+       <property name="dataSource" ref="dataSource" />
+       <!-- mybatis 配置文件  -->
+       <property name="mapperLocations" value="classpath*:com/qiang/mapping/*Mapper.xml"/>      
+       <!-- <property name="configLocation" value="classpath:mybatis-config.xml" />  -->
+       <!-- 自动配置别名 -->
+       <property name="typeAliasesPackage" value="com.qiang.model" />
+       
+       <!--配置pageHelper分页插件  -->
+       <property name="plugins">
+		    <array>
+		      <bean class="com.github.pagehelper.PageHelper">
+		        <property name="properties">
+		          <value>
+		            dialect=mysql
+		          </value>
+		        </property>
+		      </bean>
+		    </array>
+  	  </property>
+       
+       
+    </bean>
+    
+    <!-- 扫包  -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.qiang.dao"/>
+	</bean>
+    
+    <!-- 事务管理器 -->
+    <bean id="txManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+    	<property name="dataSource" ref="dataSource"></property>
+    </bean>
+    
+    <!--   定义一个增强:  配置方法的传播行为 -->
+    <tx:advice id="txAdvice" transaction-manager="txManager">
+		<tx:attributes>
+			<tx:method name="save*" propagation="REQUIRED"/>
+			<tx:method name="add*" propagation="REQUIRED"/>	
+			<tx:method name="insert*" propagation="REQUIRED"/>	
+			<tx:method name="update*" propagation="REQUIRED"/>
+			<tx:method name="edit*" propagation="REQUIRED"/>
+			<tx:method name="delete*" propagation="REQUIRED"/>
+			<tx:method name="remove*" propagation="REQUIRED"/>
+			<tx:method name="clear*" propagation="REQUIRED"/>
+			<tx:method name="*" propagation="SUPPORTS" read-only="true"/>
+		</tx:attributes>
+	</tx:advice> 
+    
+    
+    <!--注解方式实现事务-->
+<!--     <tx:annotation-driven transaction-manager="txManager" /> -->
+    
+    <!-- 配置切点 切该包下 子包所有类下的所有方法 不管什么参数-->
+    <aop:config>
+    	<aop:pointcut id="pointMethod" expression="execution(* com.qiang.service.*.*.*(..))"/>
+    	<aop:advisor advice-ref="txAdvice" pointcut-ref="pointMethod"/>
+    </aop:config>
+
+    
+	   <!-- SpringMVC上传文件时，配置MultipartResolver处理器 --> 
+	<bean id="multipartResolver" class="org.springframework.web.multipart.commons.CommonsMultipartResolver"> 
+	    <property name="defaultEncoding" value="UTF-8"/> 
+	    <!-- 指定所上传文件的总大小不能超过31M。注意maxUploadSize属性的限制不是针对单个文件，而是所有文件的容量之和 --> 
+	    <property name="maxUploadSize" value="2097152"/>
+	    <!-- 最大内存大小 (10240)--> 
+	    <property name="maxInMemorySize" value="40960" />
+	</bean> 
+	   
+	<!-- SpringMVC在超出上传文件限制时，会抛出org.springframework.web.multipart.MaxUploadSizeExceededException --> 
+	<!-- 该异常是SpringMVC在检查上传的文件信息时抛出来的，而且此时还没有进入到Controller方法中 --> 
+	<bean id="exceptionResolver" class="org.springframework.web.servlet.handler.SimpleMappingExceptionResolver"> 
+	    <property name="exceptionMappings"> 
+	        <props> 
+	            <!-- 遇到MaxUploadSizeExceededException异常时，自动跳转到/WEB-INF/jsp/error_fileupload.jsp页面 --> 
+	            <prop key="org.springframework.web.multipart.MaxUploadSizeExceededException">error_fileupload</prop> 
+	        </props> 
+	    </property> 
+	</bean>
+    
+    
+</beans>
